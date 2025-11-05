@@ -13,43 +13,35 @@ def pregunta_01():
     El archivo limpio debe escribirse en "files/output/solicitudes_de_credito.csv"
 
     """
-    import pandas as pd  
+    import pandas as pd
     import os
-    
-    df = pd.read_csv('files/input/solicitudes_de_credito.csv', sep=';')
-    
-    if 'Unnamed: 0' in df.columns:
-        df = df.drop('Unnamed: 0', axis=1)
-    
-    text_columns = ['sexo', 'tipo_de_emprendimiento', 'idea_negocio', 'barrio', 'línea_credito']
-    
-    for col in text_columns:
-        if col in df.columns:
-            df[col] = df[col].str.lower().str.strip()
-    
-    df = df.dropna()
-    
+
+    df = pd.read_csv('files/input/solicitudes_de_credito.csv', sep=';', index_col=0)
+
+    df['sexo'] = df['sexo'].astype('category').str.lower()
+
+    df['fecha_de_beneficio'] = pd.to_datetime(
+        df['fecha_de_beneficio'], format="%d/%m/%Y", errors="coerce"
+    ).combine_first(
+        pd.to_datetime(df['fecha_de_beneficio'], format="%Y/%m/%d", errors="coerce")
+    )
+
+    df['monto_del_credito'] = (
+        df['monto_del_credito']
+        .str.strip()
+        .str.replace("$", "", regex=False)
+        .str.replace(",", "", regex=False)
+        .str.replace(".00", "", regex=False)
+        .astype(int)
+    )
+
+    df['barrio'] = df['barrio'].str.lower().str.replace("_", " ").str.replace("-", " ")
+    df['idea_negocio'] = df['idea_negocio'].str.lower().str.replace("_", " ").str.replace("-", " ").str.strip()
+    df['línea_credito'] = df['línea_credito'].str.lower().str.replace("_", " ").str.replace("-", " ").str.strip()
+    df['tipo_de_emprendimiento'] = df['tipo_de_emprendimiento'].str.lower().str.replace("_", " ").str.replace("-", " ").str.strip()
+
     df = df.drop_duplicates()
-    
-    df = df.sort_values(['sexo', 'tipo_de_emprendimiento', 'monto_del_credito', 'fecha_de_beneficio'])
-    
-    df = df.drop_duplicates(
-        subset=['sexo', 'tipo_de_emprendimiento', 'idea_negocio', 'barrio', 'estrato', 'fecha_de_beneficio'],
-        keep='first'
-    )
-    
-    df = df.drop_duplicates(
-        subset=['tipo_de_emprendimiento', 'idea_negocio', 'barrio', 'estrato', 'comuna_ciudadano', 'fecha_de_beneficio'],
-        keep='first'
-    )
-    
-    df = df.drop_duplicates(
-        subset=['idea_negocio', 'barrio', 'estrato', 'comuna_ciudadano', 'línea_credito', 'fecha_de_beneficio'],
-        keep='first'
-    )
-    
+    df = df.dropna()
+
     os.makedirs('files/output', exist_ok=True)
-    
-    df.to_csv('files/output/solicitudes_de_credito.csv', sep=';', index=False)
-    
-    return None
+    df.to_csv('files/output/solicitudes_de_credito.csv', sep=';', index=True)
